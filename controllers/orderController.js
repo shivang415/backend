@@ -1,0 +1,178 @@
+const db = require("../config/db");
+
+const getUserOrders = (req, res, next) => {
+    const userId = req.user.id;
+
+    const sql = `
+        SELECT 
+            order_items.order_id,
+            order_items.product_id,
+            products.name,
+            order_items.quantity,
+            order_items.price,
+            order_items.quantity * order_items.price AS total_price
+        FROM order_items
+        JOIN orders 
+        ON order_items.order_id = orders.id
+        JOIN products
+        ON order_items.product_id = products.id
+        WHERE orders.user_id = ?;
+    `;
+
+    db.query(sql, [userId], (err, results) => {
+        if (err) {
+            return next(err);
+        }
+
+        res.json(results);
+    });
+};
+
+const createOrder = (req, res, next) => {
+
+    const { items } = req.body;
+
+    const userId = req.user.id;
+
+    // Check items
+    if (!items || items.length === 0) {
+        return res.status(400).json({
+            message: "Items are required"
+        });
+    }
+
+    // Step 1: Create order
+    const orderSql = `
+        INSERT INTO orders (user_id)
+        VALUES (?)
+    `;
+
+    db.query(orderSql, [userId], (err, result) => {
+
+        if (err) {
+            return next(err);
+        }
+
+        // New order ki ID
+        const orderId = result.insertId;
+
+        // Step 2: Har item ko process karo
+        items.forEach((item) => {
+
+            const { product_id, quantity } = item;
+
+            // Product database mein hai ya nahi?
+            const productSql =
+                "SELECT * FROM products WHERE id = ?";
+
+            db.query(
+                productSql,
+                [product_id],
+                (err, results) => {
+
+                    if (err) {
+                        return next(err);
+                    }
+
+                    // Product nahi mila
+                    if (results.length === 0) {
+                        return res.status(404).json({
+                            message: "Product not found"
+                        });
+                    }
+
+                    const product = results[0];
+
+                    // Step 3: order_items mein insert
+                    const itemSql = `
+                        INSERT INTO order_items
+                        (order_id, product_id, quantity, price)
+                        VALUES (?, ?, ?, ?)
+                    `;
+
+                    db.query(
+                        itemSql,
+                        [
+                            orderId,
+                            product_id,
+                            quantity,
+                            product.price
+                        ],
+                        (err) => {
+
+                            if (err) {
+                                return next(err);
+                            }
+
+                        }
+                    );
+                }
+            );
+        });
+
+        res.status(201).json({
+            message: "Order created successfully",
+            orderId: orderId
+        });
+    });
+};
+
+const getOrderById = (req,res,next) => {
+
+    const userId = req.user.id;
+
+    const orderId = Number(req.params.id);
+
+    const sql = `
+        SELECT 
+            order_items.order_id,
+            order_items.product_id,
+            products.name,
+            order_items.quantity,
+            order_items.price,
+            order_items.quantity * order_items.price AS total_price
+        FROM order_items
+        JOIN orders 
+        ON order_items.order_id = orders.id
+        JOIN products 
+        ON order_items.product_id = products.id
+        WHERE orders.user_id = ?
+        AND orders.id = ?;
+    `;
+
+    db.query(sql, [userId, orderId], (err, results) => {
+        if (err) {
+            return next(err);
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        const items = results.map(item => ({
+            product_id: item.product_id,
+            name: item.name,
+            quantity: item.quantity,
+            price: Number(item.price),
+            total_price: Number(item.total_price)
+        }));
+
+        const total_amount = items.reduce((sum, item) => {
+            return sum + Number(item.total_price);
+        }, 0);
+
+        res.json({
+            order_id: orderId,
+            items,
+            TotalAmount: total_amount
+        });
+    });
+};
+
+module.exports = {
+    getUserOrders,
+    createOrder,
+    getOrderById
+};

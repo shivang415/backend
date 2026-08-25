@@ -1,0 +1,6 @@
+Query	Check
+SELECT	results.length
+INSERT	result.insertId
+UPDATE	result.affectedRows
+DELETE	result.affectedRows
+
