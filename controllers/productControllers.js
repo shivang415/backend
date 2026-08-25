@@ -1,5 +1,6 @@
 const { json } = require("express");
 const db = require("../config/db");
+const AppError = require("../utils/AppError");
 
 const getProducts = (req, res, next) => {
 
@@ -23,21 +24,21 @@ const getProducts = (req, res, next) => {
             : undefined;
 
             if(minPrice !== undefined && (Number.isNaN(minPrice) || minPrice < 0)){
-                return res.status(400).json({
-                    message: "Invalid minPrice"
-                });
+                return next(
+                    new AppError("Invalid minPrice", 400)
+                );
             }
 
             if(maxPrice !== undefined && (Number.isNaN(maxPrice) || maxPrice < 0)){
-                return res.status(400).json({
-                    message: "Invalid maxPrice"
-                });
+                return next(
+                    new AppError("Invalid maxPrice", 400)
+                );
             }
 
             if(minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice){
-                return res.status(400).json({
-                    message: "minPrice cannot be greater than maxPrice"
-                });
+                return next(
+                    new AppError("minPrice cannot be greater than maxPrice", 400)
+                );
             }
 
         const conditions = ["name like ?"];
@@ -78,15 +79,15 @@ const getProducts = (req, res, next) => {
             page <= 0 ||
             limit <= 0
         ){
-            return res.status(400).json({
-                message: "Invalid page or limit"
-            });
+            return next(
+                new AppError("Invalid page or limit", 400)
+            );
         }
 
         if(limit > 100){
-            return res.status(400).json({
-                message: "Limit cannot be greater than 100"
-            });
+            return next(
+                new AppError("limit cannot be greater than 100", 400)
+            );
         }
 
         const offset = (page - 1) * limit;
@@ -116,9 +117,9 @@ const getProducts = (req, res, next) => {
             const totalPages = Math.ceil(totalProducts / limit);
 
             if(totalProducts === 0){
-                return res.status(404).json({
-                    message: "No products found"
-                });
+                return next(
+                new AppError("No products found", 404)
+            );
             }
 
             if(page > totalPages){
@@ -161,9 +162,9 @@ const getProductById = (req, res, next) => {
     const id = Number(req.params.id);
 
     if(Number.isNaN(id) || id <= 0){
-        return res.status(400).json({
-            message: "Invalid product id"
-        });
+        return next(
+            new AppError("Invalid product id", 400)
+        );
     }
 
     const sql = `
@@ -178,9 +179,9 @@ const getProductById = (req, res, next) => {
         }
 
         if(results.length === 0){
-            return res.status(404).json({
-                message: "Product not found"
-            });
+            return next(
+                new AppError("Product not found", 404)
+            );
         }
 
         res.json({
@@ -196,15 +197,15 @@ const createProduct = (req, res, next) => {
     const productPrice = Number(req.body.price);
 
     if(!name || name.trim() === ""){
-        return res.status(400).json({
-            message: "Product name is required"
-        });
+        return next(
+            new AppError("Product name is required", 400)
+        );
     }
 
     if(Number.isNaN(productPrice) || productPrice < 0){
-        return res.status(400).json({
-            message: "Invalid Price"
-        });
+        return next(
+            new AppError("Invalid price", 400)
+        );
     }
 
     const sql = "INSERT INTO products (name, price) VALUES (?, ?)";
@@ -229,21 +230,21 @@ const updateProduct = (req, res, next) => {
     const productPrice = Number(req.body.price);
 
     if(Number.isNaN(id) || id <= 0){
-        return res.status(400).json({
-            message: "Invalid product id"
-        });
+        return next(
+            new AppError("Invalid product id", 400)
+        );
     }
 
     if(!name || name.trim() === ""){
-        return res.status(400).json({
-            message: "Product name is required"
-        });
+        return next(
+            new AppError("Product name is required", 400)
+        );
     }
 
     if(Number.isNaN(productPrice) || productPrice < 0){
-        return res.status(400).json({
-            message: "Invalid Price"
-        });
+        return next(
+            new AppError("Invalid price", 400)
+        );
     }
 
     const sql = "UPDATE products SET name = ?, price = ? WHERE id = ?";
@@ -255,9 +256,9 @@ const updateProduct = (req, res, next) => {
         }
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({
-                message: "Product not found"
-            });
+            return next(
+            new AppError("Product not found", 404)
+        );
         }
 
         res.json({
@@ -270,9 +271,9 @@ const deleteProduct = (req, res, next) => {
     const id = Number(req.params.id);
 
     if(Number.isNaN(id) || id <= 0){
-        return res.status(400).json({
-            message: "Invalid id"
-        });
+        return next(
+            new AppError("Invalid id", 400)
+        );
     }
 
     const sql = "DELETE FROM products WHERE id = ?";
@@ -284,9 +285,9 @@ const deleteProduct = (req, res, next) => {
         }
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({
-                message: "Product not found"
-            });
+            return next(
+            new AppError("Product not found", 404)
+        );
         }
 
         res.json({
