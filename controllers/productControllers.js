@@ -2,7 +2,9 @@ const { json } = require("express");
 const db = require("../config/db");
 const AppError = require("../utils/AppError");
 
-const getProducts = (req, res, next) => {
+const getProducts = async (req, res, next) => {
+
+    try{
 
         const page = req.query.page !== undefined
             ? Number(req.query.page)
@@ -108,10 +110,7 @@ const getProducts = (req, res, next) => {
             WHERE ${whereClause};
         `;
 
-        db.query(countSql, values, (err, countResult) => {
-            if(err){
-                return next(err);
-            }
+        const [countResult] = await db.query(countSql, values); 
 
             const totalProducts = Number(countResult[0].total);
             const totalPages = Math.ceil(totalProducts / limit);
@@ -130,10 +129,7 @@ const getProducts = (req, res, next) => {
                 });
             }
 
-            db.query(sql, [...values, limit, offset], (err, results) => {
-                if(err){
-                    return next(err);
-                }
+            const [results] = await db.query(sql, [...values, limit, offset]);
 
                 const products = results.map(product => ({
                     productId: product.id,
@@ -153,30 +149,33 @@ const getProducts = (req, res, next) => {
                     previousPage: previousPage,
                     products: products
                 });
-            });
-        }); 
-    };
 
-const getProductById = (req, res, next) => {
+    } catch (err) {
 
-    const id = Number(req.params.id);
+        next(err);
 
-    if(Number.isNaN(id) || id <= 0){
-        return next(
-            new AppError("Invalid product id", 400)
-        );
     }
+};
 
-    const sql = `
-        SELECT *
-        FROM products
-        WHERE id = ?;
-    `;
+const getProductById = async (req, res, next) => {
 
-    db.query(sql, [id], (err, results)=> {
-        if(err){
-            return next(err);
+    try {
+
+        const id = Number(req.params.id);
+
+        if(Number.isNaN(id) || id <= 0){
+            return next(
+                new AppError("Invalid product id", 400)
+            );
         }
+
+        const sql = `
+            SELECT *
+            FROM products
+            WHERE id = ?;
+        `;
+
+        const [results] = await db.query(sql, [id]);
 
         if(results.length === 0){
             return next(
@@ -187,7 +186,13 @@ const getProductById = (req, res, next) => {
         res.json({
             results
         });
-    });
+
+    } catch (err) {
+
+        next(err);
+
+    }
+
 };
 
 const createProduct = (req, res, next) => {
