@@ -8,12 +8,6 @@ const registerUser = async (req, res, next) => {
     try {
         const { name, email, password } = req.body;
 
-        if (!name || !email || !password) {
-            return res.status(400).json({
-                message: "Name, email and password are required"
-            });
-        }
-
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const sql = `
@@ -38,12 +32,6 @@ const registerUser = async (req, res, next) => {
 const loginUser = async (req, res, next) => {
     try{
         const { email, password } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({
-                message: "Email and password are required"
-            });
-        }
 
         const sql = "SELECT * FROM users WHERE email = ?";
 

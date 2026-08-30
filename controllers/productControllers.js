@@ -195,37 +195,42 @@ const getProductById = async (req, res, next) => {
 
 };
 
-const createProduct = (req, res, next) => {
+const createProduct = async (req, res, next) => {
 
-    const { name, price } = req.body;
-    
-    const productPrice = Number(req.body.price);
+    try{
 
-    if(!name || name.trim() === ""){
-        return next(
-            new AppError("Product name is required", 400)
-        );
+        const { name, price } = req.body;
+        
+        const productPrice = Number(req.body.price);
+
+        // if(!name || name.trim() === ""){
+        //     return next(
+        //         new AppError("Product name is required", 400)
+        //     );
+        // }
+
+        // if(Number.isNaN(productPrice) || productPrice < 0){
+        //     return next(
+        //         new AppError("Invalid price", 400)
+        //     );
+        // }
+
+        const sql = "INSERT INTO products (name, price) VALUES (?, ?)";
+        
+        const [result] = await db.query(sql, [name.trim(), productPrice],);
+
+            res.status(201).json({
+                message: "Product created successfully",
+                productId: result.insertId
+            });
+
     }
 
-    if(Number.isNaN(productPrice) || productPrice < 0){
-        return next(
-            new AppError("Invalid price", 400)
-        );
+    catch (err) {
+
+        next(err);
+
     }
-
-    const sql = "INSERT INTO products (name, price) VALUES (?, ?)";
-    
-    db.query(sql, [name.trim(), productPrice], (err, result) => {
-
-        if (err) {
-            return next(err);
-        }
-
-        res.status(201).json({
-            message: "Product created successfully",
-            productId: result.insertId
-        });
-    });
 };
 
 const updateProduct = (req, res, next) => {

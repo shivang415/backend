@@ -5,12 +5,14 @@ const { getProducts, getProductById, createProduct, updateProduct, deleteProduct
 
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware  = require("../middleware/roleMiddleware");
+const validate = require("../middleware/validate");
+const productSchema  = require("../validators/productValidators");
 
 router.get("/", getProducts);
 
 router.get("/:id", getProductById);
 
-router.post("/", authMiddleware, roleMiddleware(["admin"]) , createProduct);
+router.post("/", validate(productSchema), authMiddleware, roleMiddleware(["admin"]) , createProduct);
 
 router.put("/:id", authMiddleware, updateProduct);
 
