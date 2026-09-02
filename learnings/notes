@@ -4,3 +4,37 @@ INSERT	result.insertId
 UPDATE	result.affectedRows
 DELETE	result.affectedRows
 
+--------------------------------------------------------------------
+
+| Code  | Meaning           | Example                    |
+| ----- | ----------------- | -------------------------- |
+| `200` | Success           | Products fetched           |
+| `201` | Created           | New order created          |
+| `400` | Bad request       | Invalid/missing data       |
+| `401` | Not authenticated | Token missing/invalid      |
+| `403` | Not permitted     | User trying admin action   |
+| `404` | Not found         | Product doesn't exist      |
+| `409` | Conflict          | Email already exists       |
+| `500` | Server error      | Unexpected DB/server error |
+
+2xx → Sab theek ✅
+
+4xx → Client/request side problem ⚠️
+
+5xx → Server side problem ❌
+
+-------------------------------------------------------------------
+
+CORS
+→ Kaunse browser origins API access kar sakte hain
+
+Rate Limiting
+→ Kitni requests allow karni hain
+
+Helmet
+→ HTTP security headers configure karna
+
+-------------------------------------------------------------------
+
+null → falsy
+value → truthy

@@ -7,7 +7,7 @@ const validate = require("../middleware/validate");
 const orderSchema = require("../validators/orderValidators");
 
 router.get("/my-orders", authMiddleware, getUserOrders);
-router.post("/", authMiddleware, validate(orderSchema), createOrder);
+router.post("/", validate(orderSchema), authMiddleware, createOrder);
 router.get("/:id", authMiddleware, getOrderById);
 
 module.exports = router;

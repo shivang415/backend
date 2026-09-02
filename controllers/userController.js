@@ -1,8 +1,87 @@
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
-const AppError = require("../utils/AppError");
+const AppError = require("../utils/AppError"); 
 
+const refreshAccessToken = async (req, res, next) => {
+    try{
+        const { refreshToken } = req.body;
+
+        if(!refreshToken) {
+            return next(
+                new AppError("Refresh token is required", 400)
+            );
+        }
+
+        const tokenHash = crypto
+            .createHash("sha256")
+            .update(refreshToken)
+            .digest("hex");
+
+        const sql = `SELECT *
+                    FROM refresh_tokens
+                    WHERE token_hash = ?
+                    `;
+
+        const [results] = await db.query(sql,[tokenHash]);
+
+        if(results.length === 0) {
+            return next(
+                new AppError("Invalid refresh token", 401)
+            );
+        }
+
+        const storedToken = results[0];
+
+        if (storedToken.revoked_at) { // storedToken.revoked_at !== null aise v likh skte hain
+            return next(
+                new AppError("Refresh token has been revoked", 401)
+            );
+        }
+
+        if(new Date(storedToken.expires_at) < new Date()) { // db wali expiry dateTime < current dateTime
+            return next(
+                new AppError("Refresh token has expired", 401)
+            );
+        }
+
+        const userSql = ` SELECT id, email, role
+                          FROM users
+                          WHERE id = ?;
+                        `;
+
+        const [userResults] = await db.query(userSql, [storedToken.user_id]);
+
+        if (userResults.length === 0) {
+            return next(
+                new AppError("User not found", 404)
+            );
+        }
+
+        const user = userResults[0];
+
+        const newAccessToken = jwt.sign(
+            {
+                id: user.id,
+                email: user.email,
+                role: user.role
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: "1h"
+            }
+        );
+
+        res.json({
+            message: "Access token refreshed successfully",
+            accessToken: newAccessToken
+        });
+
+    } catch (err) {
+        next(err);
+    }
+}
 const registerUser = async (req, res, next) => {
 
     try {
@@ -30,33 +109,34 @@ const registerUser = async (req, res, next) => {
 };
 
 const loginUser = async (req, res, next) => {
-    try{
+    try {
         const { email, password } = req.body;
 
         const sql = "SELECT * FROM users WHERE email = ?";
 
         const [results] = await db.query(sql, [email]);
 
-            if (results.length === 0) {
-                return next(
-                    new AppError("Invalid email or password", 401)
-                );
-            }
-
-            const user = results[0];
-
-            const passwordMatch = await bcrypt.compare(
-                password,
-                user.password
+        if (results.length === 0) {
+            return next(
+                new AppError("Invalid email or password", 401)
             );
+        }
 
-            if (!passwordMatch) {
-                return next(
-                    new AppError("Invalid email or password", 401)
-                );
-            }
+        const user = results[0];
 
-            const token = jwt.sign(
+        const passwordMatch = await bcrypt.compare(
+            password,
+            user.password
+        );
+
+        if (!passwordMatch) {
+            return next(
+                new AppError("Invalid email or password", 401)
+            );
+        }
+
+        // 1. Generate Access Token
+        const accessToken = jwt.sign(
             {
                 id: user.id,
                 email: user.email,
@@ -66,19 +146,49 @@ const loginUser = async (req, res, next) => {
             {
                 expiresIn: "1h"
             }
-            );
+        );
 
-            res.json({
-                message: "Login successful",
-                token: token
-            });
-    }
-    catch (err) {
+        // 2. Generate Refresh Token
+        const refreshToken = crypto.randomBytes(64).toString("hex");
+
+        // 3. Hash Refresh Token
+        const tokenHash = crypto
+            .createHash("sha256")
+            .update(refreshToken)
+            .digest("hex");
+
+        // 4. Refresh Token expiry
+        const expiresAt = new Date(
+            Date.now() + 7 * 24 * 60 * 60 * 1000
+        );
+
+        // 5. Save hashed refresh token in DB
+        const refreshSql = `
+            INSERT INTO refresh_tokens
+            (user_id, token_hash, expires_at)
+            VALUES (?, ?, ?)
+        `;
+
+        await db.query(refreshSql, [
+            user.id,
+            tokenHash,
+            expiresAt
+        ]);
+
+        // 6. Send tokens to client
+        res.json({
+            message: "Login successful",
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        });
+
+    } catch (err) {
         next(err);
     }
 };
 
 module.exports = {
     registerUser,
-    loginUser
+    loginUser,
+    refreshAccessToken
 };

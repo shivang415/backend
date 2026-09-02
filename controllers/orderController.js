@@ -1,6 +1,7 @@
 const { application } = require("express");
 const db = require("../config/db");
 const AppError = require("../utils/AppError");
+const sendResponse = require("../utils/sendResponse");
 
 const getUserOrders = async (req, res, next) => {
     try{
@@ -24,9 +25,12 @@ const getUserOrders = async (req, res, next) => {
 
         const [results] = await db.query(sql, [userId]);
             
-        res.json({
+        sendResponse(
+            res,
+            200,
+            "Products fetched successfully",
             results
-        });
+        );
     }
     catch (err) {
 

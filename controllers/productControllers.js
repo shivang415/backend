@@ -1,6 +1,7 @@
 const { json } = require("express");
 const db = require("../config/db");
 const AppError = require("../utils/AppError");
+const sendResponse = require("../utils/sendResponse");
 
 const getProducts = async (req, res, next) => {
 
@@ -122,33 +123,36 @@ const getProducts = async (req, res, next) => {
             }
 
             if(page > totalPages){
-                return res.status(404).json({
-                    message: "Page does not exist",
-                    page: page,
-                    totalPages: totalPages
-                });
+                return next (
+                    new AppError(`page ${page} does not exist. Total pages: ${totalPages}`, 404)
+                );
             }
 
             const [results] = await db.query(sql, [...values, limit, offset]);
 
                 const products = results.map(product => ({
-                    productId: product.id,
-                    productName: product.name,
-                    productPrice: product.price
+                    id: product.id,
+                    name: product.name,
+                    price: Number(product.price)
                 }));
 
                 const nextPage = page < totalPages;
                 const previousPage = page > 1;
 
-                res.json({
-                    page: page,
-                    limit: limit,
-                    totalProducts: totalProducts,
-                    totalPages: totalPages,
-                    nextPage: nextPage,
-                    previousPage: previousPage,
-                    products: products
-                });
+                sendResponse(
+                    res,
+                    200,
+                    "Products fetched successfully",
+                    {
+                        page,
+                        limit,
+                        totalProducts,
+                        totalPages,
+                        nextPage,
+                        previousPage,
+                        products
+                    }
+                );
 
     } catch (err) {
 
@@ -175,17 +179,20 @@ const getProductById = async (req, res, next) => {
             WHERE id = ?;
         `;
 
-        const [results] = await db.query(sql, [id]);
+        const [result] = await db.query(sql, [id]);
 
-        if(results.length === 0){
+        if(result.length === 0){
             return next(
                 new AppError("Product not found", 404)
             );
         }
 
-        res.json({
-            results
-        });
+        sendResponse(
+            res,
+            200,
+            "Product fetched successfully",
+            result[0]
+        )
 
     } catch (err) {
 
@@ -203,26 +210,16 @@ const createProduct = async (req, res, next) => {
         
         const productPrice = Number(req.body.price);
 
-        // if(!name || name.trim() === ""){
-        //     return next(
-        //         new AppError("Product name is required", 400)
-        //     );
-        // }
-
-        // if(Number.isNaN(productPrice) || productPrice < 0){
-        //     return next(
-        //         new AppError("Invalid price", 400)
-        //     );
-        // }
-
         const sql = "INSERT INTO products (name, price) VALUES (?, ?)";
         
         const [result] = await db.query(sql, [name.trim(), productPrice],);
 
-            res.status(201).json({
-                message: "Product created successfully",
-                productId: result.insertId
-            });
+            sendResponse(
+                res,
+                201,
+                "Product created successfully",
+                result
+            );
 
     }
 

@@ -1,13 +1,14 @@
 const jwt = require("jsonwebtoken");
+const AppError = require("../utils/AppError");
 
 const authMiddleware = (req, res, next) => {
 
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-        return res.status(401).json({
-            message: "Access denied. No token provided."
-        });
+        return next (
+            new AppError("Access denied. No token Provided", 401)
+        );
     }
 
     const token = authHeader.split(" ")[1];
@@ -23,9 +24,9 @@ const authMiddleware = (req, res, next) => {
         next();
 
     } catch (err) {
-        return res.status(401).json({
-            message: "Invalid or expired token"
-        });
+        return next (
+            new AppError("Invalid or expired token", 401)
+        );
     }
 };
 

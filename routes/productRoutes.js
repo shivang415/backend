@@ -12,7 +12,7 @@ router.get("/", getProducts);
 
 router.get("/:id", getProductById);
 
-router.post("/", validate(productSchema), authMiddleware, roleMiddleware(["admin"]) , createProduct);
+router.post("/", validate(productSchema), authMiddleware, roleMiddleware(["admin"]), createProduct);
 
 router.put("/:id", authMiddleware, updateProduct);
 
