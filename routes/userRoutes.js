@@ -14,7 +14,7 @@ const loginLimiter = rateLimit({
 
 const router = express.Router();
 
-const { registerUser, loginUser, refreshAccessToken } = require("../controllers/userController");
+const { registerUser, loginUser, refreshAccessToken, logoutUser } = require("../controllers/userController");
 const validate = require("../middleware/validate");
 const registerSchema = require("../validators/registerValidators");
 const loginSchema = require("../validators/loginValidators");
@@ -22,5 +22,6 @@ const loginSchema = require("../validators/loginValidators");
 router.post("/register", validate(registerSchema), registerUser);
 router.post("/login", loginLimiter, validate(loginSchema), loginUser);
 router.post("/refresh", refreshAccessToken);
+router.post("/logout", logoutUser);
 
 module.exports = router;
